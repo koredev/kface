@@ -5,19 +5,25 @@ static Window *s_main_window;
 
 // Date
 static TextLayer *s_date_layer;
-static GFont s_date_font;
 
 // Time
 static TextLayer *s_time_layer;
-static GFont s_time_font;
 
 // Weather
-static TextLayer *s_weather_layer;
-static GFont s_weather_font;
+static Layer *s_weather_layer;
+static Layer *s_weather_icon_layer;
+static TextLayer *s_weather_text_layer;
 
 // Battery
 static int s_battery_level;
 static Layer *s_battery_layer;
+static Layer *s_battery_icon_layer;
+static TextLayer *s_battery_text_layer;
+
+// Fonts
+static GFont s_font_48;
+static GFont s_font_24;
+static GFont s_font_12;
 
 static void update_time() {
     // Get a tm structure
@@ -59,7 +65,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     // Store incoming information
     static char temperature_buffer[8];
     static char conditions_buffer[32];
-    static char weather_layer_buffer[32];
+    static char weather_text_layer_buffer[32];
     
     // Read tuples for data
     Tuple *temp_tuple = dict_find(iterator, MESSAGE_KEY_TEMPERATURE);
@@ -72,8 +78,8 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     }
     
     // Assemble full string and display
-    snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
-    text_layer_set_text(s_weather_layer, weather_layer_buffer);
+    snprintf(weather_text_layer_buffer, sizeof(weather_text_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
+    text_layer_set_text(s_weather_text_layer, weather_text_layer_buffer);
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
@@ -90,22 +96,90 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 
 static void battery_callback(BatteryChargeState state) {
     s_battery_level = state.charge_percent;
-    layer_mark_dirty(s_battery_layer);
+    
+    static char battery_text_layer_buffer[8];
+    snprintf(battery_text_layer_buffer, sizeof(battery_text_layer_buffer), "%d%%", s_battery_level);
+    text_layer_set_text(s_battery_text_layer, battery_text_layer_buffer);
+    
+    layer_mark_dirty(s_battery_icon_layer);
 }
 
-static void battery_update_proc(Layer *layer, GContext *ctx) {
+static void battery_update_icon_proc(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
     
-    // 10x6
-    int gone = 13 - (s_battery_level * 13) / 100;
+    // 17x6
+    int gone = 10 - (s_battery_level * 10) / 100;
     
     graphics_context_set_stroke_color(ctx, GColorWhite);
     graphics_context_set_fill_color(ctx, GColorWhite);
-    graphics_draw_rect(ctx, GRect(2, 0, 2, 2));
-    graphics_draw_rect(ctx, GRect(0, 2, bounds.size.w, bounds.size.h));
+    graphics_draw_rect(ctx, GRect(2, 0, 5, 2));
+    graphics_draw_rect(ctx, GRect(0, 2, bounds.size.w, bounds.size.h-2));
     
-    if (15-gone >= 2)
-    graphics_fill_rect(ctx, GRect(1, 3+gone, bounds.size.w-2, 15-gone), 0, GCornerNone);
+    if (11-gone >= 2) {
+        graphics_fill_rect(ctx, GRect(2, 4+gone, bounds.size.w-4, 11-gone), 0, GCornerNone);
+    }
+}
+
+static void load_fonts() {
+    s_font_12 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_12));
+    s_font_24 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_24));
+    s_font_48 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_48));
+}
+
+static void load_date(GRect bounds, Layer *layer) {
+    s_date_layer = text_layer_create(GRect(0, bounds.size.h/4 - 12, bounds.size.w, 25));
+    
+    text_layer_set_background_color(s_date_layer, GColorClear);
+    text_layer_set_text_color(s_date_layer, GColorWhite);
+    text_layer_set_font(s_date_layer, s_font_24);
+    text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
+    layer_add_child(layer, text_layer_get_layer(s_date_layer));
+}
+
+static void load_time(GRect bounds, Layer *layer) {
+    s_time_layer = text_layer_create(GRect(0, bounds.size.h/2 - 25, bounds.size.w, 50));   
+    text_layer_set_background_color(s_time_layer, GColorClear);
+    text_layer_set_text_color(s_time_layer, GColorWhite);
+    text_layer_set_font(s_time_layer, s_font_48);
+    text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
+    layer_add_child(layer, text_layer_get_layer(s_time_layer));
+}
+
+static void load_weather(GRect bounds, Layer *layer) {
+    s_weather_layer = layer_create(GRect(16, 3*bounds.size.h/4, bounds.size.w/3, 25));
+    GRect weather_bounds = layer_get_bounds(s_weather_layer);
+    
+    s_weather_icon_layer = layer_create(GRect(0, 0, 9, 17));
+    layer_add_child(s_weather_layer, s_weather_icon_layer);
+    
+    s_weather_text_layer = text_layer_create(GRect(12, weather_bounds.size.h/2 - 5, weather_bounds.size.w/2, weather_bounds.size.h));
+    text_layer_set_background_color(s_weather_text_layer, GColorClear);
+    text_layer_set_text_color(s_weather_text_layer, GColorWhite);
+    text_layer_set_font(s_weather_text_layer, s_font_12);
+    text_layer_set_text_alignment(s_weather_text_layer, GTextAlignmentLeft);
+    text_layer_set_text(s_weather_text_layer, "Loading...");
+    layer_add_child(s_weather_layer, text_layer_get_layer(s_weather_text_layer));
+    
+    layer_add_child(layer, s_weather_layer);
+}
+
+static void load_battery(GRect bounds, Layer *layer) {
+    s_battery_layer = layer_create(GRect(bounds.size.w/2, 3*bounds.size.h/4 + 2, bounds.size.w/3, 25));
+    GRect battery_bounds = layer_get_bounds(s_battery_layer);
+    
+    s_battery_icon_layer = layer_create(GRect(0, 0, 9, 17));
+    layer_set_update_proc(s_battery_icon_layer, battery_update_icon_proc);
+    layer_add_child(s_battery_layer, s_battery_icon_layer);
+    
+    s_battery_text_layer = text_layer_create(GRect(12, battery_bounds.size.h/2 - 5, battery_bounds.size.w/2, battery_bounds.size.h));
+    text_layer_set_background_color(s_battery_text_layer, GColorClear);
+    text_layer_set_text_color(s_battery_text_layer, GColorWhite);
+    text_layer_set_font(s_battery_text_layer, s_font_12);
+    text_layer_set_text_alignment(s_battery_text_layer, GTextAlignmentLeft);
+    text_layer_set_text(s_battery_text_layer, "100%");
+    layer_add_child(s_battery_layer, text_layer_get_layer(s_battery_text_layer));
+    
+    layer_add_child(layer, s_battery_layer);
 }
 
 static void main_window_load(Window *window) {
@@ -113,56 +187,27 @@ static void main_window_load(Window *window) {
     Layer *window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
     
-    // DATE
-    s_date_layer = text_layer_create(GRect(0, bounds.size.h/4 - 12, bounds.size.w, 25));
-    s_date_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_24));
-    text_layer_set_background_color(s_date_layer, GColorClear);
-    text_layer_set_text_color(s_date_layer, GColorWhite);
-    text_layer_set_font(s_date_layer, s_date_font);
-    text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
-    layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
-    
-    // TIME
-    // Create the TextLayer with specific bounds
-    s_time_layer = text_layer_create(GRect(0, bounds.size.h/2 - 25, bounds.size.w, 50));
-    // Improve the layout to be more like a watchface
-    s_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_48));
-    text_layer_set_background_color(s_time_layer, GColorClear);
-    text_layer_set_text_color(s_time_layer, GColorWhite);
-    text_layer_set_font(s_time_layer, s_time_font);
-    text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
-    layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
-    
-    // WEATHER
-    s_weather_layer = text_layer_create(GRect(12, 3*bounds.size.h/4, bounds.size.w/3, 25));
-    s_weather_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_12));
-    text_layer_set_background_color(s_weather_layer, GColorClear);
-    text_layer_set_text_color(s_weather_layer, GColorWhite);
-    text_layer_set_font(s_weather_layer, s_weather_font);
-    text_layer_set_text_alignment(s_weather_layer, GTextAlignmentLeft);
-    text_layer_set_text(s_weather_layer, "Loading...");
-    layer_add_child(window_layer, text_layer_get_layer(s_weather_layer));
-    
-    // BATTERY ICON
-    s_battery_layer = layer_create(GRect(bounds.size.w/2, 3*bounds.size.h/4 + 2, 6, 17));
-    layer_set_update_proc(s_battery_layer, battery_update_proc);
-    layer_add_child(window_layer, s_battery_layer);
-    
-    // BATTERY TEXT
+    load_fonts();
+    load_date(bounds, window_layer);
+    load_time(bounds, window_layer);
+    load_weather(bounds, window_layer);
+    load_battery(bounds, window_layer);
 }
 
 static void main_window_unload(Window *window) {
     // Destroy TextLayer
     text_layer_destroy(s_date_layer);
     text_layer_destroy(s_time_layer);
-    text_layer_destroy(s_weather_layer);
+    text_layer_destroy(s_weather_text_layer);
+    text_layer_destroy(s_battery_text_layer);
     
     // Unload GFont
-    fonts_unload_custom_font(s_date_font);
-    fonts_unload_custom_font(s_time_font);
-    fonts_unload_custom_font(s_weather_font);
+    fonts_unload_custom_font(s_font_12);
+    fonts_unload_custom_font(s_font_24);
+    fonts_unload_custom_font(s_font_48);
     
     // Destroy layers
+    layer_destroy(s_weather_layer);
     layer_destroy(s_battery_layer);
 }
 

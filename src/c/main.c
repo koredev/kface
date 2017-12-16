@@ -15,6 +15,10 @@ static GFont s_time_font;
 static TextLayer *s_weather_layer;
 static GFont s_weather_font;
 
+// Battery
+static int s_battery_level;
+static Layer *s_battery_layer;
+
 static void update_time() {
     // Get a tm structure
     time_t temp = time(NULL);
@@ -73,15 +77,35 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
-  APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
 }
 
 static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
-  APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
 }
 
 static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
-  APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
+    APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
+}
+
+static void battery_callback(BatteryChargeState state) {
+    s_battery_level = state.charge_percent;
+    layer_mark_dirty(s_battery_layer);
+}
+
+static void battery_update_proc(Layer *layer, GContext *ctx) {
+    GRect bounds = layer_get_bounds(layer);
+    
+    // 10x6
+    int gone = 13 - (s_battery_level * 13) / 100;
+    
+    graphics_context_set_stroke_color(ctx, GColorWhite);
+    graphics_context_set_fill_color(ctx, GColorWhite);
+    graphics_draw_rect(ctx, GRect(2, 0, 2, 2));
+    graphics_draw_rect(ctx, GRect(0, 2, bounds.size.w, bounds.size.h));
+    
+    if (15-gone >= 2)
+    graphics_fill_rect(ctx, GRect(1, 3+gone, bounds.size.w-2, 15-gone), 0, GCornerNone);
 }
 
 static void main_window_load(Window *window) {
@@ -110,14 +134,21 @@ static void main_window_load(Window *window) {
     layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
     
     // WEATHER
-    s_weather_layer = text_layer_create(GRect(0, 3*bounds.size.h/4, bounds.size.w, 25));
+    s_weather_layer = text_layer_create(GRect(12, 3*bounds.size.h/4, bounds.size.w/3, 25));
     s_weather_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_12));
     text_layer_set_background_color(s_weather_layer, GColorClear);
     text_layer_set_text_color(s_weather_layer, GColorWhite);
     text_layer_set_font(s_weather_layer, s_weather_font);
-    text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
+    text_layer_set_text_alignment(s_weather_layer, GTextAlignmentLeft);
     text_layer_set_text(s_weather_layer, "Loading...");
     layer_add_child(window_layer, text_layer_get_layer(s_weather_layer));
+    
+    // BATTERY ICON
+    s_battery_layer = layer_create(GRect(bounds.size.w/2, 3*bounds.size.h/4 + 2, 6, 17));
+    layer_set_update_proc(s_battery_layer, battery_update_proc);
+    layer_add_child(window_layer, s_battery_layer);
+    
+    // BATTERY TEXT
 }
 
 static void main_window_unload(Window *window) {
@@ -125,10 +156,14 @@ static void main_window_unload(Window *window) {
     text_layer_destroy(s_date_layer);
     text_layer_destroy(s_time_layer);
     text_layer_destroy(s_weather_layer);
+    
     // Unload GFont
     fonts_unload_custom_font(s_date_font);
     fonts_unload_custom_font(s_time_font);
     fonts_unload_custom_font(s_weather_font);
+    
+    // Destroy layers
+    layer_destroy(s_battery_layer);
 }
 
 static void init() {
@@ -153,7 +188,7 @@ static void init() {
     // Set the background color
     window_set_background_color(s_main_window, GColorBlack);
     
-    // Register callbacks
+    // AppMessage callbacks
     app_message_register_inbox_received(inbox_received_callback);
     app_message_register_inbox_dropped(inbox_dropped_callback);
     app_message_register_outbox_failed(outbox_failed_callback);
@@ -163,6 +198,12 @@ static void init() {
     const int inbox_size = 128;
     const int outbox_size = 128;
     app_message_open(inbox_size, outbox_size);
+    
+    // Battery callbacks
+    battery_state_service_subscribe(battery_callback);
+    
+    // Ensure battery level is displayed from the start
+    battery_callback(battery_state_service_peek());
 }
 
 static void deinit() {

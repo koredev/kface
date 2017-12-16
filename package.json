@@ -10,19 +10,28 @@
         ],
         "displayName": "kface",
         "enableMultiJS": true,
-        "messageKeys": [],
+        "messageKeys": [
+            "TEMPERATURE",
+            "CONDITIONS"
+        ],
         "projectType": "native",
         "resources": {
             "media": [
                 {
-                    "file": "images/background.png",
-                    "name": "IMAGE_BACKGROUND",
+                    "file": "fonts/Roboto",
+                    "name": "FONT_ROBOTO_12",
                     "targetPlatforms": null,
-                    "type": "bitmap"
+                    "type": "font"
                 },
                 {
-                    "file": "fonts/Perfect DOS VGA 437.ttf",
-                    "name": "FONT_PERFECT_DOS_24",
+                    "file": "fonts/Roboto",
+                    "name": "FONT_ROBOTO_24",
+                    "targetPlatforms": null,
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/Roboto",
+                    "name": "FONT_ROBOTO_48",
                     "targetPlatforms": null,
                     "type": "font"
                 }

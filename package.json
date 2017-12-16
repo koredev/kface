@@ -13,7 +13,20 @@
         "messageKeys": [],
         "projectType": "native",
         "resources": {
-            "media": []
+            "media": [
+                {
+                    "file": "images/background.png",
+                    "name": "IMAGE_BACKGROUND",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "fonts/Perfect DOS VGA 437.ttf",
+                    "name": "FONT_PERFECT_DOS_24",
+                    "targetPlatforms": null,
+                    "type": "font"
+                }
+            ]
         },
         "sdkVersion": "3",
         "targetPlatforms": [

@@ -11,6 +11,9 @@ static char s_date_buffer[16];
 static TextLayer *s_time_layer;
 static char s_time_buffer[8];
 
+// Status bar
+static Layer *s_status_bar_layer;
+
 // Weather
 static Layer *s_weather_layer;
 static BitmapLayer *s_weather_bitmap_layer;
@@ -39,6 +42,13 @@ static const uint32_t night_cloudy_weather_icon_table[] = {
     0, RESOURCE_ID_IMAGE_WEATHER_PARTLY_CLOUDY_NIGHT, RESOURCE_ID_IMAGE_WEATHER_CLOUDY, 
     RESOURCE_ID_IMAGE_WEATHER_CLOUDY, RESOURCE_ID_IMAGE_WEATHER_CLOUDY
 };
+
+// Steps
+static Layer *s_steps_dot_layer, *s_steps_progress_layer, *s_steps_average_layer, *s_steps_layer;
+static TextLayer *s_steps_text_layer;
+static char s_steps_buffer[16], s_steps_emoji[5];
+static int s_steps_count = 0, s_steps_goal = 0, s_steps_average = 0;
+static GColor s_steps_color_loser, s_steps_color_winner;
 
 // Battery
 static int s_battery_level;
@@ -131,7 +141,63 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
     APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
 }
 
-static void battery_callback(BatteryChargeState state) {
+// Is step data available?
+bool steps_data_is_available() {
+    return HealthServiceAccessibilityMaskAvailable & health_service_metric_accessible(HealthMetricStepCount, time_start_of_today(), time(NULL));
+}
+
+static void get_steps_goal() {
+  const time_t start = time_start_of_today();
+  const time_t end = start + SECONDS_PER_DAY;
+  s_steps_goal = (int)health_service_sum_averaged(HealthMetricStepCount, start, end, HealthServiceTimeScopeDaily);
+}
+
+static void get_steps_count() {
+    s_steps_count = (int)health_service_sum_today(HealthMetricStepCount);
+}
+
+static void get_steps_average() {
+    const time_t start = time_start_of_today();
+    const time_t end = time(NULL);
+    s_steps_average = (int)health_service_sum_averaged(HealthMetricStepCount, start, end, HealthServiceTimeScopeDaily);
+}
+
+static void display_steps_count() {
+    int thousands = s_steps_count / 1000;
+    int hundreds = s_steps_count % 1000;
+    
+    if (s_steps_count >= s_steps_average) {
+        text_layer_set_text_color(s_steps_text_layer, s_steps_color_winner);
+        snprintf(s_steps_emoji, sizeof(s_steps_emoji), "\U0001F60C");
+    } else {
+        text_layer_set_text_color(s_steps_text_layer, s_steps_color_loser);
+        snprintf(s_steps_emoji, sizeof(s_steps_emoji), "\U0001F4A9");
+    }
+
+    if (thousands > 0) {
+        snprintf(s_steps_buffer, sizeof(s_steps_buffer), "%d,%03d %s", thousands, hundreds, s_steps_emoji);
+    } else {
+        snprintf(s_steps_buffer, sizeof(s_steps_buffer), "%d %s", hundreds, s_steps_emoji);
+    }
+
+    text_layer_set_text(s_steps_text_layer, s_steps_buffer);
+}
+
+static void health_handler(HealthEventType event, void *context) {
+    if(event == HealthEventSignificantUpdate) {
+        get_steps_goal();
+    }
+
+    if(event != HealthEventSleepUpdate) {
+        get_steps_count();
+        get_steps_average();
+        display_steps_count();
+        layer_mark_dirty(s_steps_progress_layer);
+        layer_mark_dirty(s_steps_average_layer);
+    }
+}
+
+static void battery_handler(BatteryChargeState state) {
     s_battery_level = state.charge_percent;
     
     static char battery_text_layer_buffer[8];
@@ -164,17 +230,17 @@ static void load_fonts() {
 }
 
 static void load_date(GRect bounds, Layer *layer) {
-    s_date_layer = text_layer_create(GRect(0, bounds.size.h/4 - 12, bounds.size.w, 25));
+    s_date_layer = text_layer_create(GRect(0, bounds.size.h/4, bounds.size.w, 25));
     
     text_layer_set_background_color(s_date_layer, GColorClear);
     text_layer_set_text_color(s_date_layer, GColorWhite);
-    text_layer_set_font(s_date_layer, s_font_24);
+    text_layer_set_font(s_date_layer, s_font_12);
     text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
     layer_add_child(layer, text_layer_get_layer(s_date_layer));
 }
 
 static void load_time(GRect bounds, Layer *layer) {
-    s_time_layer = text_layer_create(GRect(0, bounds.size.h/2 - 25, bounds.size.w, 50));   
+    s_time_layer = text_layer_create(GRect(0, bounds.size.h/2 - 32, bounds.size.w, 50));   
     text_layer_set_background_color(s_time_layer, GColorClear);
     text_layer_set_text_color(s_time_layer, GColorWhite);
     text_layer_set_font(s_time_layer, s_font_48);
@@ -182,10 +248,13 @@ static void load_time(GRect bounds, Layer *layer) {
     layer_add_child(layer, text_layer_get_layer(s_time_layer));
 }
 
-static void load_weather(GRect bounds, Layer *layer) {
-    s_weather_layer = layer_create(GRect(16, 3*bounds.size.h/4, bounds.size.w/3, 25));
+static void load_status_bar(GRect bounds, Layer *layer) {
+    s_status_bar_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(24, 0), 3*bounds.size.h/4 - 16, bounds.size.w, 25));
+    GRect status_bar_bounds = layer_get_bounds(s_status_bar_layer);
+    
+    // Weather
+    s_weather_layer = layer_create(GRect(8, 0, status_bar_bounds.size.w/3, 25));
     GRect weather_bounds = layer_get_bounds(s_weather_layer);
-     
     s_weather_bitmap = lookup_weather_icon(200, 1);
     s_weather_bitmap_layer = bitmap_layer_create(GRect(0, -4, 24, weather_bounds.size.h));
     bitmap_layer_set_bitmap(s_weather_bitmap_layer, s_weather_bitmap);
@@ -198,27 +267,37 @@ static void load_weather(GRect bounds, Layer *layer) {
     text_layer_set_text_alignment(s_weather_text_layer, GTextAlignmentLeft);
     text_layer_set_text(s_weather_text_layer, "Loading...");
     layer_add_child(s_weather_layer, text_layer_get_layer(s_weather_text_layer));
+    layer_add_child(s_status_bar_layer, s_weather_layer);
     
-    layer_add_child(layer, s_weather_layer);
-}
-
-static void load_battery(GRect bounds, Layer *layer) {
-    s_battery_layer = layer_create(GRect(bounds.size.w/3, 3*bounds.size.h/4, bounds.size.w/3, 25));
+    // Steps
+    s_steps_layer = layer_create(GRect(status_bar_bounds.size.w/4, 0, status_bar_bounds.size.w/2, 25));
+    GRect steps_bounds = layer_get_bounds(s_steps_layer);
+    s_steps_text_layer = text_layer_create(GRect(0, 2, steps_bounds.size.w, steps_bounds.size.h));
+    text_layer_set_background_color(s_steps_text_layer, GColorClear);
+    text_layer_set_text_color(s_steps_text_layer, GColorWhite);
+    text_layer_set_font(s_steps_text_layer, s_font_12);
+    text_layer_set_text_alignment(s_steps_text_layer, GTextAlignmentCenter);
+    text_layer_set_text(s_steps_text_layer, "A10000");
+    layer_add_child(s_steps_layer, text_layer_get_layer(s_steps_text_layer));
+    layer_add_child(s_status_bar_layer, s_steps_layer);
+    
+    // Battery
+    s_battery_layer = layer_create(GRect(2*status_bar_bounds.size.w/3, 0, status_bar_bounds.size.w/3, 25));
     GRect battery_bounds = layer_get_bounds(s_battery_layer);
-    
-    s_battery_icon_layer = layer_create(GRect(12, 4, 6, 12));
+    s_battery_icon_layer = layer_create(GRect(0, 2, 6, 12));
     layer_set_update_proc(s_battery_icon_layer, battery_update_icon_proc);
     layer_add_child(s_battery_layer, s_battery_icon_layer);
     
-    s_battery_text_layer = text_layer_create(GRect(24, 2, battery_bounds.size.w/2, battery_bounds.size.h));
+    s_battery_text_layer = text_layer_create(GRect(8, 2, battery_bounds.size.w, battery_bounds.size.h));
     text_layer_set_background_color(s_battery_text_layer, GColorClear);
     text_layer_set_text_color(s_battery_text_layer, GColorWhite);
     text_layer_set_font(s_battery_text_layer, s_font_12);
     text_layer_set_text_alignment(s_battery_text_layer, GTextAlignmentLeft);
     text_layer_set_text(s_battery_text_layer, "100%");
     layer_add_child(s_battery_layer, text_layer_get_layer(s_battery_text_layer));
+    layer_add_child(s_status_bar_layer, s_battery_layer);
     
-    layer_add_child(layer, s_battery_layer);
+    layer_add_child(layer, s_status_bar_layer);
 }
 
 static void main_window_load(Window *window) {
@@ -229,8 +308,7 @@ static void main_window_load(Window *window) {
     load_fonts();
     load_date(bounds, window_layer);
     load_time(bounds, window_layer);
-    load_weather(bounds, window_layer);
-    load_battery(bounds, window_layer);
+    load_status_bar(bounds, window_layer);
 }
 
 static void main_window_unload(Window *window) {
@@ -238,6 +316,7 @@ static void main_window_unload(Window *window) {
     text_layer_destroy(s_date_layer);
     text_layer_destroy(s_time_layer);
     text_layer_destroy(s_weather_text_layer);
+    text_layer_destroy(s_steps_text_layer);
     text_layer_destroy(s_battery_text_layer);
     
     // Destroy bitmaps
@@ -251,8 +330,10 @@ static void main_window_unload(Window *window) {
     
     // Destroy layers
     layer_destroy(s_weather_layer);
+    layer_destroy(s_steps_layer);
     layer_destroy(s_battery_layer);
     layer_destroy(s_battery_icon_layer);
+    layer_destroy(s_status_bar_layer);
 }
 
 static void init() {
@@ -288,11 +369,14 @@ static void init() {
     const int outbox_size = 128;
     app_message_open(inbox_size, outbox_size);
     
-    // Battery callbacks
-    battery_state_service_subscribe(battery_callback);
+    // Battery
+    battery_state_service_subscribe(battery_handler);
+    battery_handler(battery_state_service_peek());
     
-    // Ensure battery level is displayed from the start
-    battery_callback(battery_state_service_peek());
+    // Steps
+    if (steps_data_is_available()) {
+        health_service_events_subscribe(health_handler, NULL);
+    }
 }
 
 static void deinit() {

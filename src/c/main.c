@@ -3,6 +3,10 @@
 // Main Window
 static Window *s_main_window;
 
+// Bluetooth
+static BitmapLayer *s_bt_connected_icon_layer, *s_bt_disconnected_icon_layer;
+static GBitmap *s_bt_connected_icon_bitmap, *s_bt_disconnected_icon_bitmap;
+
 // Date
 static TextLayer *s_date_layer;
 static char s_date_buffer[16];
@@ -58,6 +62,17 @@ static TextLayer *s_battery_text_layer;
 
 // Fonts
 static GFont s_font_48, s_font_12;
+
+static void bluetooth_handler(bool connected) {
+    // Show icon if disconnected
+    layer_set_hidden(bitmap_layer_get_layer(s_bt_connected_icon_layer), !connected);
+    layer_set_hidden(bitmap_layer_get_layer(s_bt_disconnected_icon_layer), connected);
+
+    if(!connected) {
+        // Issue a vibrating alert
+        vibes_double_pulse();
+    }
+}
 
 static void update_time() {
     // Get a tm structure
@@ -249,6 +264,17 @@ static void load_fonts() {
     s_font_48 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_48));
 }
 
+static void load_bluetooth(GRect bounds, Layer *layer) {
+    s_bt_connected_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BLUETOOTH_CONNECTED);
+    s_bt_connected_icon_layer = bitmap_layer_create(GRect(bounds.size.w/2 - 8, bounds.size.h/6, 16, 16));
+    bitmap_layer_set_bitmap(s_bt_connected_icon_layer, s_bt_connected_icon_bitmap);
+    s_bt_disconnected_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BLUETOOTH_DISABLED);
+    s_bt_disconnected_icon_layer = bitmap_layer_create(GRect(bounds.size.w/2 - 8, bounds.size.h/6, 16, 16));
+    bitmap_layer_set_bitmap(s_bt_disconnected_icon_layer, s_bt_disconnected_icon_bitmap);
+    layer_add_child(layer, bitmap_layer_get_layer(s_bt_connected_icon_layer));
+    layer_add_child(layer, bitmap_layer_get_layer(s_bt_disconnected_icon_layer));
+}
+
 static void load_steps_background(GRect bounds, Layer *layer) {
     s_steps_color_loser = GColorMelon;
     s_steps_color_winner = GColorJaegerGreen;
@@ -348,6 +374,7 @@ static void main_window_load(Window *window) {
     GRect bounds = layer_get_bounds(window_layer);
     
     load_fonts();
+    load_bluetooth(bounds, window_layer);
     if (steps_data_is_available()) {
         load_steps_background(bounds, window_layer);
     }
@@ -366,7 +393,11 @@ static void main_window_unload(Window *window) {
     
     // Destroy bitmaps
     gbitmap_destroy(s_weather_bitmap);
+    gbitmap_destroy(s_bt_connected_icon_bitmap);
+    gbitmap_destroy(s_bt_disconnected_icon_bitmap);
     bitmap_layer_destroy(s_weather_bitmap_layer);
+    bitmap_layer_destroy(s_bt_connected_icon_layer);
+    bitmap_layer_destroy(s_bt_disconnected_icon_layer);
     
     // Unload GFont
     fonts_unload_custom_font(s_font_12);
@@ -395,6 +426,14 @@ static void init() {
     
     //Show the Window on the watch, with animated=true
     window_stack_push(s_main_window, true);
+    
+    // Register for Bluetooth connection updates
+    connection_service_subscribe((ConnectionHandlers) {
+        .pebble_app_connection_handler = bluetooth_handler
+    });
+    
+    // Show the correct state of the BT connection from the start
+    bluetooth_handler(connection_service_peek_pebble_app_connection());
     
     // Make sure the time is displayed from the start
     update_time();

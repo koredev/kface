@@ -26,12 +26,6 @@
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/bluetooth.png",
-                    "name": "IMAGE_BLUETOOTH_CONNECTED",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
                     "file": "images/na.png",
                     "name": "IMAGE_WEATHER_NA",
                     "targetPlatforms": null,
@@ -135,5 +129,5 @@
             "watchface": true
         }
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
 }

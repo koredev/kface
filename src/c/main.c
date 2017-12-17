@@ -4,8 +4,8 @@
 static Window *s_main_window;
 
 // Bluetooth
-static BitmapLayer *s_bt_connected_icon_layer, *s_bt_disconnected_icon_layer;
-static GBitmap *s_bt_connected_icon_bitmap, *s_bt_disconnected_icon_bitmap;
+static BitmapLayer *s_bt_disconnected_icon_layer;
+static GBitmap *s_bt_disconnected_icon_bitmap;
 
 // Date
 static TextLayer *s_date_layer;
@@ -65,7 +65,6 @@ static GFont s_font_48, s_font_12;
 
 static void bluetooth_handler(bool connected) {
     // Show icon if disconnected
-    layer_set_hidden(bitmap_layer_get_layer(s_bt_connected_icon_layer), !connected);
     layer_set_hidden(bitmap_layer_get_layer(s_bt_disconnected_icon_layer), connected);
 
     if(!connected) {
@@ -265,13 +264,9 @@ static void load_fonts() {
 }
 
 static void load_bluetooth(GRect bounds, Layer *layer) {
-    s_bt_connected_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BLUETOOTH_CONNECTED);
-    s_bt_connected_icon_layer = bitmap_layer_create(GRect(bounds.size.w/2 - 8, bounds.size.h/6, 16, 16));
-    bitmap_layer_set_bitmap(s_bt_connected_icon_layer, s_bt_connected_icon_bitmap);
     s_bt_disconnected_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BLUETOOTH_DISABLED);
     s_bt_disconnected_icon_layer = bitmap_layer_create(GRect(bounds.size.w/2 - 8, bounds.size.h/6, 16, 16));
     bitmap_layer_set_bitmap(s_bt_disconnected_icon_layer, s_bt_disconnected_icon_bitmap);
-    layer_add_child(layer, bitmap_layer_get_layer(s_bt_connected_icon_layer));
     layer_add_child(layer, bitmap_layer_get_layer(s_bt_disconnected_icon_layer));
 }
 
@@ -393,10 +388,8 @@ static void main_window_unload(Window *window) {
     
     // Destroy bitmaps
     gbitmap_destroy(s_weather_bitmap);
-    gbitmap_destroy(s_bt_connected_icon_bitmap);
     gbitmap_destroy(s_bt_disconnected_icon_bitmap);
     bitmap_layer_destroy(s_weather_bitmap_layer);
-    bitmap_layer_destroy(s_bt_connected_icon_layer);
     bitmap_layer_destroy(s_bt_disconnected_icon_layer);
     
     // Unload GFont

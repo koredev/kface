@@ -57,7 +57,7 @@ static Layer *s_battery_layer, *s_battery_icon_layer;
 static TextLayer *s_battery_text_layer;
 
 // Fonts
-static GFont s_font_48, s_font_24, s_font_12;
+static GFont s_font_48, s_font_12;
 
 static void update_time() {
     // Get a tm structure
@@ -90,13 +90,6 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
         // Send message
         app_message_outbox_send();
     }
-}
-
-static void status_bar_update_proc(Layer *layer, GContext *ctx) {
-    graphics_context_set_stroke_color(ctx, GColorWhite);
-    graphics_context_set_fill_color(ctx, GColorBlack);
-    graphics_draw_rect(ctx, layer_get_bounds(layer));
-    graphics_fill_rect(ctx, layer_get_bounds(layer), 0, GCornerNone);
 }
 
 static GBitmap* lookup_weather_icon(int code, int night) {       
@@ -169,7 +162,7 @@ static void get_steps_average() {
     s_steps_average = (int)health_service_sum_averaged(HealthMetricStepCount, start, end, HealthServiceTimeScopeDaily);
 }
 
-static void display_steps_count() {  
+static void display_steps_count() {
     if (s_steps_count >= s_steps_average) {
         text_layer_set_text_color(s_steps_text_layer, s_steps_color_winner);
         snprintf(s_steps_emoji, sizeof(s_steps_emoji), "\U0001F60C");
@@ -253,7 +246,6 @@ static void battery_update_icon_proc(Layer *layer, GContext *ctx) {
 
 static void load_fonts() {
     s_font_12 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_12));
-    s_font_24 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_24));
     s_font_48 = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_ROBOTO_48));
 }
 
@@ -297,12 +289,11 @@ static void load_time(GRect bounds, Layer *layer) {
 }
 
 static void load_status_bar(GRect bounds, Layer *layer) {
-    s_status_bar_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(24, 0), 3*bounds.size.h/4 - 16, bounds.size.w, 16));
-    layer_set_update_proc(s_status_bar_layer, status_bar_update_proc);
+    s_status_bar_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(24, 0), 3*bounds.size.h/4 - 18, bounds.size.w, 32));
     GRect status_bar_bounds = layer_get_bounds(s_status_bar_layer);
     
     // Weather
-    s_weather_layer = layer_create(GRect(8, 0, status_bar_bounds.size.w, status_bar_bounds.size.h));
+    s_weather_layer = layer_create(GRect(28, 0, status_bar_bounds.size.w, status_bar_bounds.size.h/2));
     GRect weather_bounds = layer_get_bounds(s_weather_layer);
     s_weather_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_WEATHER_NA);
     s_weather_bitmap_layer = bitmap_layer_create(GRect(0, 0, 24, weather_bounds.size.h));
@@ -317,21 +308,9 @@ static void load_status_bar(GRect bounds, Layer *layer) {
     text_layer_set_text(s_weather_text_layer, "");
     layer_add_child(s_weather_layer, text_layer_get_layer(s_weather_text_layer));
     layer_add_child(s_status_bar_layer, s_weather_layer);
-    
-    // Steps
-    s_steps_layer = layer_create(GRect(status_bar_bounds.size.w/4, 0, status_bar_bounds.size.w/2, status_bar_bounds.size.h));
-    GRect steps_bounds = layer_get_bounds(s_steps_layer);
-    s_steps_text_layer = text_layer_create(GRect(0, 0, steps_bounds.size.w, steps_bounds.size.h));
-    text_layer_set_background_color(s_steps_text_layer, GColorClear);
-    text_layer_set_text_color(s_steps_text_layer, GColorWhite);
-    text_layer_set_font(s_steps_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-    text_layer_set_text_alignment(s_steps_text_layer, GTextAlignmentCenter);
-    text_layer_set_text(s_steps_text_layer, "A10000");
-    layer_add_child(s_steps_layer, text_layer_get_layer(s_steps_text_layer));
-    layer_add_child(s_status_bar_layer, s_steps_layer);
-    
+        
     // Battery
-    s_battery_layer = layer_create(GRect(2*status_bar_bounds.size.w/3 + 2, 0, status_bar_bounds.size.w/3, status_bar_bounds.size.h));
+    s_battery_layer = layer_create(GRect(status_bar_bounds.size.w/2 + 8, 0, status_bar_bounds.size.w/3, status_bar_bounds.size.h/2));
     GRect battery_bounds = layer_get_bounds(s_battery_layer);
     s_battery_icon_layer = layer_create(GRect(0, 2, 6, 12));
     layer_set_update_proc(s_battery_icon_layer, battery_update_icon_proc);
@@ -345,6 +324,18 @@ static void load_status_bar(GRect bounds, Layer *layer) {
     text_layer_set_text(s_battery_text_layer, "100%");
     layer_add_child(s_battery_layer, text_layer_get_layer(s_battery_text_layer));
     layer_add_child(s_status_bar_layer, s_battery_layer);
+    
+    // Steps
+    s_steps_layer = layer_create(GRect(status_bar_bounds.size.w/4, 16, status_bar_bounds.size.w/2, status_bar_bounds.size.h/2));
+    GRect steps_bounds = layer_get_bounds(s_steps_layer);
+    s_steps_text_layer = text_layer_create(GRect(0, 0, steps_bounds.size.w, steps_bounds.size.h));
+    text_layer_set_background_color(s_steps_text_layer, GColorClear);
+    text_layer_set_text_color(s_steps_text_layer, GColorWhite);
+    text_layer_set_font(s_steps_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+    text_layer_set_text_alignment(s_steps_text_layer, GTextAlignmentCenter);
+    text_layer_set_text(s_steps_text_layer, "A10000");
+    layer_add_child(s_steps_layer, text_layer_get_layer(s_steps_text_layer));
+    layer_add_child(s_status_bar_layer, s_steps_layer);
     
     layer_add_child(layer, s_status_bar_layer);
 }
@@ -375,7 +366,6 @@ static void main_window_unload(Window *window) {
     
     // Unload GFont
     fonts_unload_custom_font(s_font_12);
-    fonts_unload_custom_font(s_font_24);
     fonts_unload_custom_font(s_font_48);
     
     // Destroy layers

@@ -20,98 +20,92 @@
         "resources": {
             "media": [
                 {
+                    "file": "images/na.png",
+                    "name": "IMAGE_WEATHER_NA",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/rainynight.png",
+                    "name": "IMAGE_WEATHER_RAIN_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/extreme.png",
+                    "name": "IMAGE_WEATHER_EXTREME",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/mist.png",
+                    "name": "IMAGE_WEATHER_MIST",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/snow.png",
+                    "name": "IMAGE_WEATHER_SNOW",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/thunder.png",
+                    "name": "IMAGE_WEATHER_THUNDER",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/rainyday.png",
+                    "name": "IMAGE_WEATHER_RAIN_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/cloudy.png",
+                    "name": "IMAGE_WEATHER_CLOUDY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/cloudynight.png",
+                    "name": "IMAGE_WEATHER_PARTLY_CLOUDY_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/cloudyday.png",
+                    "name": "IMAGE_WEATHER_PARTLY_CLOUDY_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/clearnight.png",
+                    "name": "IMAGE_WEATHER_CLEAR_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/clearday.png",
+                    "name": "IMAGE_WEATHER_CLEAR_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
                     "file": "images/footstep.png",
                     "name": "IMAGE_FOOTSTEP",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/wi-na.png",
-                    "name": "IMAGE_WEATHER_NA",
+                    "file": "fonts/Roboto",
+                    "name": "FONT_ROBOTO_48",
                     "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/09n.png",
-                    "name": "IMAGE_WEATHER_RAIN_NIGHT",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/09d.png",
-                    "name": "IMAGE_WEATHER_RAIN_DAY",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/90.png",
-                    "name": "IMAGE_WEATHER_EXTREME",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/50.png",
-                    "name": "IMAGE_WEATHER_MIST",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/13.png",
-                    "name": "IMAGE_WEATHER_SNOW",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/11.png",
-                    "name": "IMAGE_WEATHER_THUNDER",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/03.png",
-                    "name": "IMAGE_WEATHER_CLOUDY",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/02n.png",
-                    "name": "IMAGE_WEATHER_PARTLY_CLOUDY_NIGHT",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/02d.png",
-                    "name": "IMAGE_WEATHER_PARTLY_CLOUDY_DAY",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/01n.png",
-                    "name": "IMAGE_WEATHER_CLEAR_NIGHT",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/01d.png",
-                    "name": "IMAGE_WEATHER_CLEAR_DAY",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
+                    "type": "font"
                 },
                 {
                     "file": "fonts/Roboto",
                     "name": "FONT_ROBOTO_12",
-                    "targetPlatforms": null,
-                    "type": "font"
-                },
-                {
-                    "file": "fonts/Roboto",
-                    "name": "FONT_ROBOTO_24",
-                    "targetPlatforms": null,
-                    "type": "font"
-                },
-                {
-                    "file": "fonts/Roboto",
-                    "name": "FONT_ROBOTO_48",
                     "targetPlatforms": null,
                     "type": "font"
                 }

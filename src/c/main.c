@@ -49,7 +49,7 @@ static const uint32_t night_cloudy_weather_icon_table[] = {
 };
 
 // Steps
-static Layer *s_steps_dots_layer, *s_steps_progress_layer, *s_steps_average_layer, *s_steps_layer;
+static Layer *s_steps_track_layer, *s_steps_progress_layer, *s_steps_average_layer, *s_steps_layer;
 static TextLayer *s_steps_text_layer;
 static char s_steps_buffer[32], s_steps_emoji[5];
 static int s_steps_count = 0, s_steps_goal = 0, s_steps_average = 0;
@@ -185,7 +185,7 @@ static void display_steps_count() {
         snprintf(s_steps_emoji, sizeof(s_steps_emoji), "\U0001F4A9");
     }
     
-    snprintf(s_steps_buffer, sizeof(s_steps_buffer), "%s%d", s_steps_emoji, s_steps_count);
+    snprintf(s_steps_buffer, sizeof(s_steps_buffer), "%s %d", s_steps_emoji, s_steps_count);
     
     text_layer_set_text(s_steps_text_layer, s_steps_buffer);
 }
@@ -204,23 +204,19 @@ static void health_handler(HealthEventType event, void *context) {
     }
 }
 
-static void dots_layer_update_proc(Layer *layer, GContext *ctx) {
-    const GRect inset = grect_inset(layer_get_bounds(layer), GEdgeInsets(6));
-    const int num_dots = 12;
-    for(int i = 0; i < num_dots; i++) {
-        GPoint pos = gpoint_from_polar(inset, GOvalScaleModeFitCircle, DEG_TO_TRIGANGLE(i * 360 / num_dots));
-        graphics_context_set_fill_color(ctx, GColorDarkGray);
-        graphics_fill_circle(ctx, pos, 2);
-    }
+static void steps_track_layer_update_proc(Layer *layer, GContext *ctx) {
+    const GRect inset = grect_inset(layer_get_bounds(layer), GEdgeInsets(2));
+    graphics_context_set_fill_color(ctx, GColorWhite);
+    graphics_fill_radial(ctx, inset, GOvalScaleModeFitCircle, 2, DEG_TO_TRIGANGLE(0), DEG_TO_TRIGANGLE(360));
 }
 
-static void progress_layer_update_proc(Layer *layer, GContext *ctx) {
+static void steps_progress_layer_update_proc(Layer *layer, GContext *ctx) {
     const GRect inset = grect_inset(layer_get_bounds(layer), GEdgeInsets(2));
     graphics_context_set_fill_color(ctx, s_steps_count >= s_steps_average ? s_steps_color_winner : s_steps_color_loser);
-    graphics_fill_radial(ctx, inset, GOvalScaleModeFitCircle, 12, DEG_TO_TRIGANGLE(0), DEG_TO_TRIGANGLE(360.0f * s_steps_count / s_steps_goal));
+    graphics_fill_radial(ctx, inset, GOvalScaleModeFitCircle, 8, DEG_TO_TRIGANGLE(0), DEG_TO_TRIGANGLE(360.0f * s_steps_count / s_steps_goal));
 }
 
-static void average_layer_update_proc(Layer *layer, GContext *ctx) {
+static void steps_average_layer_update_proc(Layer *layer, GContext *ctx) {
     if(s_steps_average < 1) {
         return;
     }
@@ -230,7 +226,7 @@ static void average_layer_update_proc(Layer *layer, GContext *ctx) {
     int trigangle = DEG_TO_TRIGANGLE(360.0f * s_steps_average / s_steps_goal);
     int line_width_trigangle = 1000;
     // Draw a very narrow radial (it's just a line)
-    graphics_fill_radial(ctx, inset, GOvalScaleModeFitCircle, 12, trigangle - line_width_trigangle, trigangle);
+    graphics_fill_radial(ctx, inset, GOvalScaleModeFitCircle, 8, trigangle - line_width_trigangle, trigangle);
 }
 
 static void battery_handler(BatteryChargeState state) {
@@ -275,18 +271,18 @@ static void load_steps_background(GRect bounds, Layer *layer) {
     s_steps_color_winner = GColorJaegerGreen;
     
     // Dots for the progress indicator
-    s_steps_dots_layer = layer_create(bounds);
-    layer_set_update_proc(s_steps_dots_layer, dots_layer_update_proc);
-    layer_add_child(layer, s_steps_dots_layer);
+    s_steps_track_layer = layer_create(bounds);
+    layer_set_update_proc(s_steps_track_layer, steps_track_layer_update_proc);
+    layer_add_child(layer, s_steps_track_layer);
 
     // Progress indicator
     s_steps_progress_layer = layer_create(bounds);
-    layer_set_update_proc(s_steps_progress_layer, progress_layer_update_proc);
+    layer_set_update_proc(s_steps_progress_layer, steps_progress_layer_update_proc);
     layer_add_child(layer, s_steps_progress_layer);
 
     // Average indicator
     s_steps_average_layer = layer_create(bounds);
-    layer_set_update_proc(s_steps_average_layer, average_layer_update_proc);
+    layer_set_update_proc(s_steps_average_layer, steps_average_layer_update_proc);
     layer_add_child(layer, s_steps_average_layer);
 }
 
@@ -321,12 +317,12 @@ static void load_status_bar(GRect bounds, Layer *layer) {
     bitmap_layer_set_bitmap(s_weather_bitmap_layer, s_weather_bitmap);
     layer_add_child(s_weather_layer, bitmap_layer_get_layer(s_weather_bitmap_layer));
     
-    s_weather_text_layer = text_layer_create(GRect(22, 2, weather_bounds.size.w, weather_bounds.size.h));
+    s_weather_text_layer = text_layer_create(GRect(20, 2, weather_bounds.size.w, weather_bounds.size.h));
     text_layer_set_background_color(s_weather_text_layer, GColorClear);
     text_layer_set_text_color(s_weather_text_layer, GColorWhite);
     text_layer_set_font(s_weather_text_layer, s_font_12);
     text_layer_set_text_alignment(s_weather_text_layer, GTextAlignmentLeft);
-    text_layer_set_text(s_weather_text_layer, "");
+    text_layer_set_text(s_weather_text_layer, "?");
     layer_add_child(s_weather_layer, text_layer_get_layer(s_weather_text_layer));
     layer_add_child(s_status_bar_layer, s_weather_layer);
         
@@ -402,7 +398,7 @@ static void main_window_unload(Window *window) {
     layer_destroy(s_battery_layer);
     layer_destroy(s_battery_icon_layer);
     layer_destroy(s_status_bar_layer);
-    layer_destroy(s_steps_dots_layer);
+    layer_destroy(s_steps_track_layer);
     layer_destroy(s_steps_progress_layer);
     layer_destroy(s_steps_average_layer);
 }

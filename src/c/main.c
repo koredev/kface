@@ -326,16 +326,18 @@ static void load_status_bar(GRect bounds, Layer *layer) {
     layer_add_child(s_status_bar_layer, s_battery_layer);
     
     // Steps
-    s_steps_layer = layer_create(GRect(status_bar_bounds.size.w/4, 16, status_bar_bounds.size.w/2, status_bar_bounds.size.h/2));
-    GRect steps_bounds = layer_get_bounds(s_steps_layer);
-    s_steps_text_layer = text_layer_create(GRect(0, 0, steps_bounds.size.w, steps_bounds.size.h));
-    text_layer_set_background_color(s_steps_text_layer, GColorClear);
-    text_layer_set_text_color(s_steps_text_layer, GColorWhite);
-    text_layer_set_font(s_steps_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-    text_layer_set_text_alignment(s_steps_text_layer, GTextAlignmentCenter);
-    text_layer_set_text(s_steps_text_layer, "A10000");
-    layer_add_child(s_steps_layer, text_layer_get_layer(s_steps_text_layer));
-    layer_add_child(s_status_bar_layer, s_steps_layer);
+    if (steps_data_is_available()) {
+        s_steps_layer = layer_create(GRect(status_bar_bounds.size.w/4, 16, status_bar_bounds.size.w/2, status_bar_bounds.size.h/2));
+        GRect steps_bounds = layer_get_bounds(s_steps_layer);
+        s_steps_text_layer = text_layer_create(GRect(0, 0, steps_bounds.size.w, steps_bounds.size.h));
+        text_layer_set_background_color(s_steps_text_layer, GColorClear);
+        text_layer_set_text_color(s_steps_text_layer, GColorWhite);
+        text_layer_set_font(s_steps_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+        text_layer_set_text_alignment(s_steps_text_layer, GTextAlignmentCenter);
+        text_layer_set_text(s_steps_text_layer, "A10000");
+        layer_add_child(s_steps_layer, text_layer_get_layer(s_steps_text_layer));
+        layer_add_child(s_status_bar_layer, s_steps_layer);
+    }
     
     layer_add_child(layer, s_status_bar_layer);
 }
@@ -346,7 +348,9 @@ static void main_window_load(Window *window) {
     GRect bounds = layer_get_bounds(window_layer);
     
     load_fonts();
-    load_steps_background(bounds, window_layer);
+    if (steps_data_is_available()) {
+        load_steps_background(bounds, window_layer);
+    }
     load_date(bounds, window_layer);
     load_time(bounds, window_layer);
     load_status_bar(bounds, window_layer);

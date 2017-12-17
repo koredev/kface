@@ -12,11 +12,37 @@
         "enableMultiJS": true,
         "messageKeys": [
             "TEMPERATURE",
-            "CONDITIONS"
+            "CONDITIONS",
+            "SUNRISE",
+            "SUNSET"
         ],
         "projectType": "native",
         "resources": {
             "media": [
+                {
+                    "file": "images/footstep.png",
+                    "name": "IMAGE_FOOTSTEP",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/wi-na.png",
+                    "name": "IMAGE_WEATHER_NA",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/09n.png",
+                    "name": "IMAGE_WEATHER_RAIN_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/09d.png",
+                    "name": "IMAGE_WEATHER_RAIN_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
                 {
                     "file": "images/90.png",
                     "name": "IMAGE_WEATHER_EXTREME",
@@ -38,12 +64,6 @@
                 {
                     "file": "images/11.png",
                     "name": "IMAGE_WEATHER_THUNDER",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/09.png",
-                    "name": "IMAGE_WEATHER_RAIN",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },

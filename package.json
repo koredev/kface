@@ -18,6 +18,66 @@
         "resources": {
             "media": [
                 {
+                    "file": "images/90.png",
+                    "name": "IMAGE_WEATHER_EXTREME",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/50.png",
+                    "name": "IMAGE_WEATHER_MIST",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/13.png",
+                    "name": "IMAGE_WEATHER_SNOW",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/11.png",
+                    "name": "IMAGE_WEATHER_THUNDER",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/09.png",
+                    "name": "IMAGE_WEATHER_RAIN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/03.png",
+                    "name": "IMAGE_WEATHER_CLOUDY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/02n.png",
+                    "name": "IMAGE_WEATHER_PARTLY_CLOUDY_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/02d.png",
+                    "name": "IMAGE_WEATHER_PARTLY_CLOUDY_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/01n.png",
+                    "name": "IMAGE_WEATHER_CLEAR_NIGHT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/01d.png",
+                    "name": "IMAGE_WEATHER_CLEAR_DAY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
                     "file": "fonts/Roboto",
                     "name": "FONT_ROBOTO_12",
                     "targetPlatforms": null,

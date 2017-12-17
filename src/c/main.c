@@ -5,14 +5,40 @@ static Window *s_main_window;
 
 // Date
 static TextLayer *s_date_layer;
+static char s_date_buffer[16];
 
 // Time
 static TextLayer *s_time_layer;
+static char s_time_buffer[8];
 
 // Weather
 static Layer *s_weather_layer;
-static Layer *s_weather_icon_layer;
+static BitmapLayer *s_weather_bitmap_layer;
+static GBitmap *s_weather_bitmap;
 static TextLayer *s_weather_text_layer;
+static char temperature_buffer[8];
+
+static const uint32_t day_weather_icon_table[] = {
+    0, 0, RESOURCE_ID_IMAGE_WEATHER_THUNDER, 
+    RESOURCE_ID_IMAGE_WEATHER_RAIN, 0, RESOURCE_ID_IMAGE_WEATHER_RAIN, 
+    RESOURCE_ID_IMAGE_WEATHER_SNOW, RESOURCE_ID_IMAGE_WEATHER_MIST, RESOURCE_ID_IMAGE_WEATHER_CLEAR_DAY
+};
+
+static const uint32_t day_cloudy_weather_icon_table[] = {
+    0, RESOURCE_ID_IMAGE_WEATHER_PARTLY_CLOUDY_DAY, RESOURCE_ID_IMAGE_WEATHER_CLOUDY, 
+    RESOURCE_ID_IMAGE_WEATHER_CLOUDY, RESOURCE_ID_IMAGE_WEATHER_CLOUDY
+};
+
+static const uint32_t night_weather_icon_table[] = {
+    0, 0, RESOURCE_ID_IMAGE_WEATHER_THUNDER, 
+    RESOURCE_ID_IMAGE_WEATHER_RAIN, 0, RESOURCE_ID_IMAGE_WEATHER_RAIN, 
+    RESOURCE_ID_IMAGE_WEATHER_SNOW, RESOURCE_ID_IMAGE_WEATHER_MIST, RESOURCE_ID_IMAGE_WEATHER_CLEAR_NIGHT
+};
+
+static const uint32_t night_cloudy_weather_icon_table[] = {
+    0, RESOURCE_ID_IMAGE_WEATHER_PARTLY_CLOUDY_NIGHT, RESOURCE_ID_IMAGE_WEATHER_CLOUDY, 
+    RESOURCE_ID_IMAGE_WEATHER_CLOUDY, RESOURCE_ID_IMAGE_WEATHER_CLOUDY
+};
 
 // Battery
 static int s_battery_level;
@@ -27,16 +53,13 @@ static GFont s_font_12;
 
 static void update_time() {
     // Get a tm structure
-    time_t temp = time(NULL);
-    struct tm *tick_time = localtime(&temp);
+    time_t current_time = time(NULL);
+    struct tm *tick_time = localtime(&current_time);
     
     // Write the current hours and minutes into a buffer
     // Need static buffer so it persists across multiple calls to update_time
     // This buffer is required by TextLayer to be long-lived as long as the text is displayed
-    static char s_date_buffer[16];
     strftime(s_date_buffer, sizeof(s_date_buffer), "%a %b %d", tick_time);
-    
-    static char s_time_buffer[8];
     strftime(s_time_buffer, sizeof(s_time_buffer), clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
     
     // Display this time on the TextLayer
@@ -61,12 +84,21 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     }
 }
 
-static void inbox_received_callback(DictionaryIterator *iterator, void *context) {   
-    // Store incoming information
-    static char temperature_buffer[8];
-    static char conditions_buffer[32];
-    static char weather_text_layer_buffer[32];
-    
+static GBitmap* lookup_weather_icon(int code, int day) {       
+    if (code <= 800 && day) {
+        return gbitmap_create_with_resource(day_weather_icon_table[code/100]);
+    } else if (code <= 800) {
+        return gbitmap_create_with_resource(night_weather_icon_table[code/100]);
+    } else if (code < 900 && day) {
+        return gbitmap_create_with_resource(day_cloudy_weather_icon_table[code%100]);
+    } else if (code < 900) {
+        return gbitmap_create_with_resource(night_cloudy_weather_icon_table[code%100]);
+    } else {
+        return gbitmap_create_with_resource(RESOURCE_ID_IMAGE_WEATHER_EXTREME);
+    }
+}
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {    
     // Read tuples for data
     Tuple *temp_tuple = dict_find(iterator, MESSAGE_KEY_TEMPERATURE);
     Tuple *conditions_tuple = dict_find(iterator, MESSAGE_KEY_CONDITIONS);
@@ -74,12 +106,17 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     // If all data is available, use it
     if(temp_tuple && conditions_tuple) {
         snprintf(temperature_buffer, sizeof(temperature_buffer), "%dC", (int)temp_tuple->value->int32);
-        snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
     }
     
+    // Set icon
+    time_t current_time = time(NULL);
+    struct tm *tick_time = localtime(&current_time);
+    int day = tick_time->tm_hour > 4 && tick_time->tm_hour < 18;
+    s_weather_bitmap = lookup_weather_icon(conditions_tuple->value->int32, day);
+    bitmap_layer_set_bitmap(s_weather_bitmap_layer, s_weather_bitmap);
+    
     // Assemble full string and display
-    snprintf(weather_text_layer_buffer, sizeof(weather_text_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
-    text_layer_set_text(s_weather_text_layer, weather_text_layer_buffer);
+    text_layer_set_text(s_weather_text_layer, temperature_buffer);
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
@@ -108,15 +145,15 @@ static void battery_update_icon_proc(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
     
     // 17x6
-    int gone = 10 - (s_battery_level * 10) / 100;
+    int gone = 5 - (s_battery_level * 5) / 100;
     
     graphics_context_set_stroke_color(ctx, GColorWhite);
     graphics_context_set_fill_color(ctx, GColorWhite);
-    graphics_draw_rect(ctx, GRect(2, 0, 5, 2));
+    graphics_draw_rect(ctx, GRect(2, 1, 2, 1));
     graphics_draw_rect(ctx, GRect(0, 2, bounds.size.w, bounds.size.h-2));
     
-    if (11-gone >= 2) {
-        graphics_fill_rect(ctx, GRect(2, 4+gone, bounds.size.w-4, 11-gone), 0, GCornerNone);
+    if (6-gone >= 2) {
+        graphics_fill_rect(ctx, GRect(2, 4+gone, bounds.size.w-4, 6-gone), 0, GCornerNone);
     }
 }
 
@@ -148,11 +185,13 @@ static void load_time(GRect bounds, Layer *layer) {
 static void load_weather(GRect bounds, Layer *layer) {
     s_weather_layer = layer_create(GRect(16, 3*bounds.size.h/4, bounds.size.w/3, 25));
     GRect weather_bounds = layer_get_bounds(s_weather_layer);
+     
+    s_weather_bitmap = lookup_weather_icon(200, 1);
+    s_weather_bitmap_layer = bitmap_layer_create(GRect(0, -4, 24, weather_bounds.size.h));
+    bitmap_layer_set_bitmap(s_weather_bitmap_layer, s_weather_bitmap);
+    layer_add_child(s_weather_layer, bitmap_layer_get_layer(s_weather_bitmap_layer));
     
-    s_weather_icon_layer = layer_create(GRect(0, 0, 9, 17));
-    layer_add_child(s_weather_layer, s_weather_icon_layer);
-    
-    s_weather_text_layer = text_layer_create(GRect(12, weather_bounds.size.h/2 - 5, weather_bounds.size.w/2, weather_bounds.size.h));
+    s_weather_text_layer = text_layer_create(GRect(20, 2, weather_bounds.size.w/2, weather_bounds.size.h));
     text_layer_set_background_color(s_weather_text_layer, GColorClear);
     text_layer_set_text_color(s_weather_text_layer, GColorWhite);
     text_layer_set_font(s_weather_text_layer, s_font_12);
@@ -164,14 +203,14 @@ static void load_weather(GRect bounds, Layer *layer) {
 }
 
 static void load_battery(GRect bounds, Layer *layer) {
-    s_battery_layer = layer_create(GRect(bounds.size.w/2, 3*bounds.size.h/4 + 2, bounds.size.w/3, 25));
+    s_battery_layer = layer_create(GRect(bounds.size.w/3, 3*bounds.size.h/4, bounds.size.w/3, 25));
     GRect battery_bounds = layer_get_bounds(s_battery_layer);
     
-    s_battery_icon_layer = layer_create(GRect(0, 0, 9, 17));
+    s_battery_icon_layer = layer_create(GRect(12, 4, 6, 12));
     layer_set_update_proc(s_battery_icon_layer, battery_update_icon_proc);
     layer_add_child(s_battery_layer, s_battery_icon_layer);
     
-    s_battery_text_layer = text_layer_create(GRect(12, battery_bounds.size.h/2 - 5, battery_bounds.size.w/2, battery_bounds.size.h));
+    s_battery_text_layer = text_layer_create(GRect(24, 2, battery_bounds.size.w/2, battery_bounds.size.h));
     text_layer_set_background_color(s_battery_text_layer, GColorClear);
     text_layer_set_text_color(s_battery_text_layer, GColorWhite);
     text_layer_set_font(s_battery_text_layer, s_font_12);
@@ -201,6 +240,10 @@ static void main_window_unload(Window *window) {
     text_layer_destroy(s_weather_text_layer);
     text_layer_destroy(s_battery_text_layer);
     
+    // Destroy bitmaps
+    gbitmap_destroy(s_weather_bitmap);
+    bitmap_layer_destroy(s_weather_bitmap_layer);
+    
     // Unload GFont
     fonts_unload_custom_font(s_font_12);
     fonts_unload_custom_font(s_font_24);
@@ -209,6 +252,7 @@ static void main_window_unload(Window *window) {
     // Destroy layers
     layer_destroy(s_weather_layer);
     layer_destroy(s_battery_layer);
+    layer_destroy(s_battery_icon_layer);
 }
 
 static void init() {

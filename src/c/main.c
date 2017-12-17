@@ -289,11 +289,11 @@ static void load_time(GRect bounds, Layer *layer) {
 }
 
 static void load_status_bar(GRect bounds, Layer *layer) {
-    s_status_bar_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(24, 0), 3*bounds.size.h/4 - 18, bounds.size.w, 32));
+    s_status_bar_layer = layer_create(GRect(0, 3*bounds.size.h/4 - 18, bounds.size.w, 32));
     GRect status_bar_bounds = layer_get_bounds(s_status_bar_layer);
     
     // Weather
-    s_weather_layer = layer_create(GRect(28, 0, status_bar_bounds.size.w, status_bar_bounds.size.h/2));
+    s_weather_layer = layer_create(GRect(PBL_IF_ROUND_ELSE(42, 28), 0, status_bar_bounds.size.w, status_bar_bounds.size.h/2));
     GRect weather_bounds = layer_get_bounds(s_weather_layer);
     s_weather_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_WEATHER_NA);
     s_weather_bitmap_layer = bitmap_layer_create(GRect(0, 0, 24, weather_bounds.size.h));
@@ -310,7 +310,7 @@ static void load_status_bar(GRect bounds, Layer *layer) {
     layer_add_child(s_status_bar_layer, s_weather_layer);
         
     // Battery
-    s_battery_layer = layer_create(GRect(status_bar_bounds.size.w/2 + 8, 0, status_bar_bounds.size.w/3, status_bar_bounds.size.h/2));
+    s_battery_layer = layer_create(GRect(status_bar_bounds.size.w/2 + PBL_IF_ROUND_ELSE(12, 8), 0, status_bar_bounds.size.w/3, status_bar_bounds.size.h/2));
     GRect battery_bounds = layer_get_bounds(s_battery_layer);
     s_battery_icon_layer = layer_create(GRect(0, 2, 6, 12));
     layer_set_update_proc(s_battery_icon_layer, battery_update_icon_proc);
